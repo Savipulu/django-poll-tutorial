@@ -1,3 +1,5 @@
+import datetime
+
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse, reverse_lazy
@@ -22,19 +24,43 @@ class IndexView(generic.ListView):
 class AddPollForm(forms.Form):
     question_text = forms.CharField(label="Question text", max_length=200)
 
+    choice1 = forms.CharField(label="Choice 1", max_length=200)
+    choice2 = forms.CharField(label="Choice 2", max_length=200)
+
     date_input = forms.DateInput()
     date_input.input_type = 'date'
-    pub_date = forms.DateField(label="Publishing date", widget=date_input)
+    pub_date = forms.DateField(
+        label="Publishing date", widget=date_input, initial=datetime.datetime.now())
 
-    time_input = forms.TimeInput()
+    time_input = forms.TimeInput(format='%H:%M')
     time_input.input_type = 'time'
-    pub_time = forms.TimeField(label="Publishing time", widget=time_input)
+    pub_time = forms.TimeField(
+        label="Publishing time", widget=time_input, initial=datetime.datetime.now())
 
 
 class AddPollView(generic.FormView):
     template_name = 'polls/add.html'
     form_class = AddPollForm
     success_url = reverse_lazy('polls:index')
+
+    def post(self, request):
+        pub_date = datetime.date.fromisoformat(request.POST['pub_date'])
+        pub_time = datetime.time.fromisoformat(request.POST['pub_time'])
+        new_question = Question(
+            question_text=request.POST['question_text'],
+            pub_date=datetime.datetime.combine(pub_date, pub_time)
+        )
+
+        choice1 = Choice(question=new_question,
+                         choice_text=request.POST['choice1'])
+        choice2 = Choice(question=new_question,
+                         choice_text=request.POST['choice2'])
+
+        new_question.save()
+        choice1.save()
+        choice2.save()
+
+        return HttpResponseRedirect(reverse('polls:index'))
 
 
 class DetailView(generic.DetailView):
